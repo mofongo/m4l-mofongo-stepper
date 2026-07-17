@@ -66,6 +66,18 @@
     border-radius:2px;color:var(--dim);font-variant-numeric:tabular-nums}
   .lenstrip span.on{color:var(--teal);border-color:var(--teal)}
 
+  .sublabel{font-family:var(--mono);font-size:10px;letter-spacing:.14em;text-transform:uppercase;color:var(--dim);margin:0 0 6px}
+  .drums{display:flex;gap:3px;margin-bottom:14px}
+  .dcell{flex:1;height:22px;border-radius:2px;background:var(--grid-bg);border:1px solid var(--line);position:relative}
+  .dcell.k::after,.dcell.s::after{content:"";position:absolute;inset:5px;border-radius:1px}
+  .dcell.k::after{background:var(--dim);opacity:.55}
+  .dcell.s::after{background:var(--orange)}
+  .dcell.play{border-color:var(--cream)}
+  .dcell.play.s::after{background:var(--cream)}
+  #wire{color:var(--dim);transition:color .1s}
+  #wire.hot{color:var(--cream)}
+  @media (prefers-reduced-motion: reduce){ #wire{transition:none} }
+
   /* ---- signal chain ---- */
   .chain{display:grid;grid-template-columns:repeat(4,1fr);gap:14px;margin-top:8px}
   @media(max-width:840px){.chain{grid-template-columns:repeat(2,1fr)}}
@@ -105,7 +117,10 @@
   <p class="lede">Your drums write the melody. A <b>trigger-driven</b>, polymetric step sequencer for Ableton Live.</p>
 
   <div id="demo" class="zone orange" role="button" tabindex="0" aria-label="Play the sequencer demo">
-    <div class="zlabel">Melody · Steps — live demo</div>
+    <div class="zlabel">Live demo — Sender <span id="wire">▸ mofongo-trig ▸</span> Stepper</div>
+    <div class="sublabel">Drum track · Sender — orange hits = target note</div>
+    <div class="drums" id="drums"></div>
+    <div class="sublabel">Melody · Steps — advances only on target hits</div>
     <div class="grid" id="bars"></div>
     <div class="lenstrip" id="lens"></div>
     <div class="readout">
@@ -200,57 +215,74 @@
 (function(){
   const NOTES=[48,51,55,58,60,63,55,58,62,65,63,60,58,55,51,53];
   const LENS=[6,11];
-  const bars=document.getElementById('bars'), lens=document.getElementById('lens');
+  const DRUMS=['K','','','S','','','S','','K','','S','','S','','','S'];
+  const bars=document.getElementById('bars'), drums=document.getElementById('drums'),
+        lens=document.getElementById('lens'), wire=document.getElementById('wire');
   const rs=document.getElementById('rs'), rl=document.getElementById('rl'),
         rn=document.getElementById('rn'), hint=document.getElementById('hint');
   const NAMES=['C','C#','D','D#','E','F','F#','G','G#','A','A#','B'];
-  const els=[];
+  const els=[], dels=[];
   for(let i=0;i<16;i++){
     const b=document.createElement('div'); b.className='bar';
     b.style.height=(((NOTES[i]-46)/22)*100)+'%';
     bars.appendChild(b); els.push(b);
+    const c=document.createElement('div');
+    c.className='dcell'+(DRUMS[i]==='K'?' k':DRUMS[i]==='S'?' s':'');
+    drums.appendChild(c); dels.push(c);
   }
-  const lenEls=LENS.map((L,i)=>{
-    const s=document.createElement('span'); s.textContent=L; lens.appendChild(s); return s;
-  });
-  let ac=null, playing=false, step=0, li=0, len=LENS[0], timer=null;
-  function pluck(midi){
-    if(!ac) return;
-    const t=ac.currentTime, o=ac.createOscillator(), g=ac.createGain();
-    o.type='triangle'; o.frequency.value=440*Math.pow(2,(midi-69)/12);
+  const lenEls=LENS.map(L=>{ const t=document.createElement('span'); t.textContent=L; lens.appendChild(t); return t; });
+  let ac=null, playing=false, step=-1, li=0, len=LENS[0], dpos=-1, timer=null, wireT=null;
+  function midi2f(m){return 440*Math.pow(2,(m-69)/12)}
+  function pluck(m){ if(!ac)return; const t=ac.currentTime,o=ac.createOscillator(),g=ac.createGain();
+    o.type='triangle'; o.frequency.value=midi2f(m);
     g.gain.setValueAtTime(.0001,t); g.gain.exponentialRampToValueAtTime(.22,t+.008);
     g.gain.exponentialRampToValueAtTime(.0001,t+.34);
-    o.connect(g).connect(ac.destination); o.start(t); o.stop(t+.4);
-    const n=ac.createOscillator(), ng=ac.createGain();   // soft tick = the "drum"
-    n.type='square'; n.frequency.value=180;
-    ng.gain.setValueAtTime(.05,t); ng.gain.exponentialRampToValueAtTime(.0001,t+.05);
-    n.connect(ng).connect(ac.destination); n.start(t); n.stop(t+.06);
-  }
-  function paint(){
+    o.connect(g).connect(ac.destination); o.start(t); o.stop(t+.4); }
+  function kick(){ if(!ac)return; const t=ac.currentTime,o=ac.createOscillator(),g=ac.createGain();
+    o.type='sine'; o.frequency.setValueAtTime(110,t); o.frequency.exponentialRampToValueAtTime(45,t+.09);
+    g.gain.setValueAtTime(.30,t); g.gain.exponentialRampToValueAtTime(.0001,t+.14);
+    o.connect(g).connect(ac.destination); o.start(t); o.stop(t+.16); }
+  function snareHit(){ if(!ac)return; const t=ac.currentTime,
+    buf=ac.createBuffer(1,Math.floor(ac.sampleRate*.09),ac.sampleRate),d=buf.getChannelData(0);
+    for(let i=0;i<d.length;i++)d[i]=(Math.random()*2-1)*(1-i/d.length);
+    const src=ac.createBufferSource(),g=ac.createGain(),f=ac.createBiquadFilter();
+    f.type='bandpass'; f.frequency.value=2400; src.buffer=buf;
+    g.gain.setValueAtTime(.18,t); src.connect(f).connect(g).connect(ac.destination);
+    src.start(t); }
+  function paintMelody(){
     els.forEach((b,i)=>{ b.classList.toggle('hot',i===step); b.classList.toggle('dead',i>=len); });
-    lenEls.forEach((s,i)=>s.classList.toggle('on',i===li));
-    rs.textContent=step+1; rl.textContent=len;
-    const m=NOTES[step]; rn.textContent=NAMES[m%12]+(Math.floor(m/12)-1);
+    lenEls.forEach((t,i)=>t.classList.toggle('on',i===li));
+    if(step>=0){ rs.textContent=step+1; const m=NOTES[step]; rn.textContent=NAMES[m%12]+(Math.floor(m/12)-1); }
+    rl.textContent=len;
   }
-  function tick(){
+  function advance(){
     step++;
     if(step>=len){ step=0; li=(li+1)%LENS.length; len=LENS[li]; }
-    pluck(NOTES[step]); paint();
+    pluck(NOTES[step]); paintMelody();
+    wire.classList.add('hot'); clearTimeout(wireT); wireT=setTimeout(()=>wire.classList.remove('hot'),110);
+  }
+  function tick(){
+    dpos=(dpos+1)%16;
+    dels.forEach((c,i)=>c.classList.toggle('play',i===dpos));
+    const h=DRUMS[dpos];
+    if(h==='K') kick();
+    else if(h==='S'){ snareHit(); advance(); }
   }
   function toggle(){
     if(!playing){
       if(!ac){ try{ ac=new (window.AudioContext||window.webkitAudioContext)(); }catch(e){} }
       if(ac&&ac.state==='suspended') ac.resume();
-      playing=true; hint.textContent='◼ click to stop';
-      step=-1; li=0; len=LENS[0]; tick();
-      timer=setInterval(tick,190);
+      playing=true; hint.textContent='\u25FC click to stop';
+      step=-1; li=0; len=LENS[0]; dpos=-1; paintMelody();
+      tick(); timer=setInterval(tick,150);
     }else{
-      playing=false; clearInterval(timer); hint.textContent='▶ click to play';
+      playing=false; clearInterval(timer); hint.textContent='\u25B6 click to play';
+      dels.forEach(c=>c.classList.remove('play'));
     }
   }
   const demo=document.getElementById('demo');
   demo.addEventListener('click',toggle);
   demo.addEventListener('keydown',e=>{ if(e.key==='Enter'||e.key===' '){e.preventDefault();toggle();} });
-  paint(); rs.textContent='–'; rn.textContent='–';
+  paintMelody(); rs.textContent='\u2013'; rn.textContent='\u2013';
 })();
 </script>
