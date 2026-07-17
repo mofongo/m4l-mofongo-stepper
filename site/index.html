@@ -1,0 +1,248 @@
+<title>Mofongo Stepper — drum-triggered polymetric sequencer for Ableton Live</title>
+<style>
+  :root{
+    --bg:#151312; --panel:#1f1d1a; --panel-2:#242119; --ink:#ede7dc; --dim:#97928a;
+    --orange:#f2ae4d; --orange-deep:#c9862e; --teal:#6fb3c7; --teal-deep:#3e7e93;
+    --cream:#ffde99; --line:#33302b; --grid-bg:#12100c;
+    --disp:"Futura","Avenir Next Condensed","Trebuchet MS",sans-serif;
+    --body:"Avenir Next","Avenir","Helvetica Neue",Helvetica,Arial,sans-serif;
+    --mono:"SF Mono",Menlo,Consolas,monospace;
+  }
+  @media (prefers-color-scheme: light){
+    :root{ --bg:#efede8; --panel:#faf9f6; --panel-2:#f1efe8; --ink:#1b1916; --dim:#6f6a62;
+      --orange:#c9862e; --orange-deep:#a86a1d; --teal:#3e7e93; --teal-deep:#2d6376;
+      --cream:#8a5f14; --line:#d8d4cb; --grid-bg:#e4e1d8; }
+  }
+  :root[data-theme="dark"]{ --bg:#151312; --panel:#1f1d1a; --panel-2:#242119; --ink:#ede7dc; --dim:#97928a;
+    --orange:#f2ae4d; --orange-deep:#c9862e; --teal:#6fb3c7; --teal-deep:#3e7e93;
+    --cream:#ffde99; --line:#33302b; --grid-bg:#12100c; }
+  :root[data-theme="light"]{ --bg:#efede8; --panel:#faf9f6; --panel-2:#f1efe8; --ink:#1b1916; --dim:#6f6a62;
+    --orange:#c9862e; --orange-deep:#a86a1d; --teal:#3e7e93; --teal-deep:#2d6376;
+    --cream:#8a5f14; --line:#d8d4cb; --grid-bg:#e4e1d8; }
+
+  html{background:var(--bg)}
+  body{margin:0;background:var(--bg);color:var(--ink);font-family:var(--body);
+    font-size:17px;line-height:1.6;-webkit-font-smoothing:antialiased}
+  .wrap{max-width:1020px;margin:0 auto;padding:0 24px}
+  a{color:var(--teal)} a:focus-visible,button:focus-visible{outline:2px solid var(--orange);outline-offset:2px}
+
+  .eyebrow{font-family:var(--mono);font-size:12px;letter-spacing:.16em;text-transform:uppercase;color:var(--dim)}
+  h1{font-family:var(--disp);font-weight:700;text-transform:uppercase;letter-spacing:.01em;
+    font-size:clamp(46px,8.5vw,92px);line-height:.94;margin:.18em 0 .25em;text-wrap:balance}
+  h1 .flip{color:var(--orange)}
+  h2{font-family:var(--disp);font-weight:600;text-transform:uppercase;letter-spacing:.04em;
+    font-size:26px;margin:0 0 14px;text-wrap:balance}
+  p{max-width:62ch}
+  .lede{font-size:21px;line-height:1.5;color:var(--ink);max-width:34ch}
+  .lede b{color:var(--orange);font-weight:600}
+
+  header{padding:72px 0 20px}
+  section{padding:44px 0}
+  footer{padding:48px 0 72px;color:var(--dim);font-size:14px;border-top:1px solid var(--line);margin-top:40px}
+
+  /* zone panel — the device's own vocabulary */
+  .zone{background:var(--panel);border-radius:6px;position:relative;padding:20px 22px 22px}
+  .zone::before{content:"";position:absolute;inset:0 0 auto 0;height:3px;border-radius:6px 6px 0 0;background:var(--dim)}
+  .zone.orange::before{background:var(--orange)} .zone.teal::before{background:var(--teal)}
+  .zlabel{font-family:var(--mono);font-size:11px;letter-spacing:.14em;text-transform:uppercase;margin:2px 0 14px}
+  .zone.orange .zlabel{color:var(--orange)} .zone.teal .zlabel{color:var(--teal)} .zone .zlabel{color:var(--dim)}
+
+  /* ---- hero demo ---- */
+  #demo{margin-top:34px;cursor:pointer;user-select:none}
+  #demo .grid{display:flex;gap:3px;align-items:flex-end;height:170px;background:var(--grid-bg);
+    border:1px solid var(--line);border-radius:3px;padding:8px 8px 0}
+  #demo .bar{flex:1;background:var(--orange);border-radius:2px 2px 0 0;min-height:6px;
+    transition:height .12s ease, background .1s ease, opacity .12s ease}
+  @media (prefers-reduced-motion: reduce){ #demo .bar{transition:none} }
+  #demo .bar.hot{background:var(--cream)}
+  #demo .bar.dead{opacity:.22}
+  .readout{display:flex;gap:26px;flex-wrap:wrap;margin-top:14px;font-family:var(--mono);font-size:12px;
+    letter-spacing:.1em;text-transform:uppercase;color:var(--dim)}
+  .readout b{color:var(--ink);font-weight:600;font-variant-numeric:tabular-nums}
+  .readout .cyc b{color:var(--teal)}
+  #hint{color:var(--orange)}
+  .lenstrip{display:flex;gap:3px;margin-top:10px}
+  .lenstrip span{font-family:var(--mono);font-size:11px;padding:3px 10px;border:1px solid var(--line);
+    border-radius:2px;color:var(--dim);font-variant-numeric:tabular-nums}
+  .lenstrip span.on{color:var(--teal);border-color:var(--teal)}
+
+  /* ---- signal chain ---- */
+  .chain{display:grid;grid-template-columns:repeat(4,1fr);gap:14px;margin-top:8px}
+  @media(max-width:840px){.chain{grid-template-columns:repeat(2,1fr)}}
+  @media(max-width:480px){.chain{grid-template-columns:1fr}}
+  .chain .zone{padding:16px 18px 18px}
+  .chain h3{font-family:var(--disp);text-transform:uppercase;font-size:17px;letter-spacing:.05em;margin:0 0 6px}
+  .chain p{font-size:14.5px;line-height:1.55;color:var(--dim);margin:0}
+  .chain .zone::after{content:"→";position:absolute;right:-15px;top:46%;color:var(--dim);font-size:15px}
+  .chain .zone:last-child::after{content:""}
+  @media(max-width:840px){.chain .zone::after{content:""}}
+
+  /* ---- sender diagram ---- */
+  .bcast{display:flex;align-items:center;gap:22px;flex-wrap:wrap;margin-top:18px}
+  .node{font-family:var(--mono);font-size:12px;letter-spacing:.08em;text-transform:uppercase;
+    padding:12px 16px;border-radius:4px;background:var(--panel-2);border:1px solid var(--line)}
+  .node.src{border-color:var(--orange);color:var(--orange)}
+  .fan{display:flex;flex-direction:column;gap:10px}
+  .fan .node{border-left:3px solid var(--teal)}
+  .wire{color:var(--dim);font-family:var(--mono);font-size:12px}
+
+  /* ---- specs ---- */
+  .specs{display:grid;grid-template-columns:1fr 1fr;gap:1px;background:var(--line);
+    border:1px solid var(--line);border-radius:6px;overflow:hidden;margin-top:10px}
+  @media(max-width:640px){.specs{grid-template-columns:1fr}}
+  .specs div{background:var(--panel);padding:14px 18px;font-size:14.5px}
+  .specs .k{font-family:var(--mono);font-size:11px;letter-spacing:.12em;text-transform:uppercase;
+    color:var(--dim);display:block;margin-bottom:3px}
+  .specs .v{font-variant-numeric:tabular-nums}
+
+  .quiet{color:var(--dim)}
+</style>
+
+<div class="wrap">
+<header>
+  <div class="eyebrow">Max for Live · MIDI Effect · v1.2</div>
+  <h1>Mofongo<br><span class="flip">Stepper</span></h1>
+  <p class="lede">Your drums write the melody. A <b>trigger-driven</b>, polymetric step sequencer for Ableton Live.</p>
+
+  <div id="demo" class="zone orange" role="button" tabindex="0" aria-label="Play the sequencer demo">
+    <div class="zlabel">Melody · Steps — live demo</div>
+    <div class="grid" id="bars"></div>
+    <div class="lenstrip" id="lens"></div>
+    <div class="readout">
+      <span id="hint">▶ click to play</span>
+      <span>step <b id="rs">–</b></span>
+      <span class="cyc">cycle length <b id="rl">–</b></span>
+      <span>note <b id="rn">–</b></span>
+    </div>
+  </div>
+</header>
+
+<section>
+  <h2>Sequenced by hits, not by the clock</h2>
+  <p>Most step sequencers march to the transport. Mofongo Stepper only moves when a drum tells it to —
+  point it at your snare and every hit knocks the melody one step forward. Ghost notes can be filtered out,
+  chance can thin the line, and the loop itself changes length as it plays.</p>
+  <div class="chain">
+    <div class="zone">
+      <div class="zlabel">Input</div>
+      <h3>Trigger</h3>
+      <p>Pick a target note — snare, kick, anything. Hits below the velocity threshold are ignored, so accents lead and ghosts sit out.</p>
+    </div>
+    <div class="zone">
+      <div class="zlabel">Input</div>
+      <h3>Chance</h3>
+      <p>A probability gate decides whether each hit lands. 100% marches in lockstep; 60% stumbles beautifully.</p>
+    </div>
+    <div class="zone orange">
+      <div class="zlabel">Melody</div>
+      <h3>Steps</h3>
+      <p>Sixteen pitches drawn as bars. Drag to write. The grid follows your drummer, not the grid lines.</p>
+    </div>
+    <div class="zone teal">
+      <div class="zlabel">Loop length</div>
+      <h3>Length</h3>
+      <p>A second sequencer sets how many steps each pass plays — 6, then 11, then whatever you draw next.</p>
+    </div>
+  </div>
+</section>
+
+<section>
+  <h2>Loops that reshape themselves</h2>
+  <p>Each time the melody completes a pass, the length sequencer hands it a new size for the next one.
+  Draw <span class="quiet" style="font-family:var(--mono)">6&nbsp;·&nbsp;11</span> and the same sixteen notes
+  never fall on the beat the same way twice — phrases rotate against the drums, resolve, and drift apart again.
+  Drag the bracket on the length ruler to choose how many sizes take turns.</p>
+</section>
+
+<section>
+  <h2>One sender, many listeners</h2>
+  <p>Drop <strong>Mofongo Sender</strong> on the drum track. It broadcasts every hit to any number of Steppers
+  in the set — no input routing, no monitor juggling, and your tracks keep their keyboards.
+  Give each listener its own target, chance, and lengths: one kit, an ensemble of melodies.</p>
+  <div class="bcast">
+    <div class="node src">Drum track · Sender</div>
+    <div class="wire">— mofongo-trig →</div>
+    <div class="fan">
+      <div class="node">Keys · Stepper — snare, 100%</div>
+      <div class="node">Bass · Stepper — kick, 85%</div>
+      <div class="node">Mallets · Stepper — snare, 40%</div>
+    </div>
+  </div>
+</section>
+
+<section>
+  <h2>Specs</h2>
+  <div class="specs">
+    <div><span class="k">Format</span><span class="v">Max for Live MIDI Effect (.amxd), Live 12 / Max 9</span></div>
+    <div><span class="k">Companion</span><span class="v">Mofongo Sender — cross-track trigger broadcast</span></div>
+    <div><span class="k">Trigger</span><span class="v">Target note 0–127 · velocity threshold 0–127</span></div>
+    <div><span class="k">Chance</span><span class="v">Probability 0–100%</span></div>
+    <div><span class="k">Melody</span><span class="v">16 steps · pitch 36–96, drawn as bars</span></div>
+    <div><span class="k">Loop length</span><span class="v">16 slots · 1–16 steps, cycled by draggable bracket</span></div>
+  </div>
+</section>
+
+<footer>
+  Named for the dish — mashed, layered, better shared.
+  Built in Ableton, debugged one trigger at a time. © 2026
+</footer>
+</div>
+
+<script>
+(function(){
+  const NOTES=[48,51,55,58,60,63,55,58,62,65,63,60,58,55,51,53];
+  const LENS=[6,11];
+  const bars=document.getElementById('bars'), lens=document.getElementById('lens');
+  const rs=document.getElementById('rs'), rl=document.getElementById('rl'),
+        rn=document.getElementById('rn'), hint=document.getElementById('hint');
+  const NAMES=['C','C#','D','D#','E','F','F#','G','G#','A','A#','B'];
+  const els=[];
+  for(let i=0;i<16;i++){
+    const b=document.createElement('div'); b.className='bar';
+    b.style.height=(((NOTES[i]-46)/22)*100)+'%';
+    bars.appendChild(b); els.push(b);
+  }
+  const lenEls=LENS.map((L,i)=>{
+    const s=document.createElement('span'); s.textContent=L; lens.appendChild(s); return s;
+  });
+  let ac=null, playing=false, step=0, li=0, len=LENS[0], timer=null;
+  function pluck(midi){
+    if(!ac) return;
+    const t=ac.currentTime, o=ac.createOscillator(), g=ac.createGain();
+    o.type='triangle'; o.frequency.value=440*Math.pow(2,(midi-69)/12);
+    g.gain.setValueAtTime(.0001,t); g.gain.exponentialRampToValueAtTime(.22,t+.008);
+    g.gain.exponentialRampToValueAtTime(.0001,t+.34);
+    o.connect(g).connect(ac.destination); o.start(t); o.stop(t+.4);
+    const n=ac.createOscillator(), ng=ac.createGain();   // soft tick = the "drum"
+    n.type='square'; n.frequency.value=180;
+    ng.gain.setValueAtTime(.05,t); ng.gain.exponentialRampToValueAtTime(.0001,t+.05);
+    n.connect(ng).connect(ac.destination); n.start(t); n.stop(t+.06);
+  }
+  function paint(){
+    els.forEach((b,i)=>{ b.classList.toggle('hot',i===step); b.classList.toggle('dead',i>=len); });
+    lenEls.forEach((s,i)=>s.classList.toggle('on',i===li));
+    rs.textContent=step+1; rl.textContent=len;
+    const m=NOTES[step]; rn.textContent=NAMES[m%12]+(Math.floor(m/12)-1);
+  }
+  function tick(){
+    step++;
+    if(step>=len){ step=0; li=(li+1)%LENS.length; len=LENS[li]; }
+    pluck(NOTES[step]); paint();
+  }
+  function toggle(){
+    if(!playing){
+      if(!ac){ try{ ac=new (window.AudioContext||window.webkitAudioContext)(); }catch(e){} }
+      if(ac&&ac.state==='suspended') ac.resume();
+      playing=true; hint.textContent='◼ click to stop';
+      step=-1; li=0; len=LENS[0]; tick();
+      timer=setInterval(tick,190);
+    }else{
+      playing=false; clearInterval(timer); hint.textContent='▶ click to play';
+    }
+  }
+  const demo=document.getElementById('demo');
+  demo.addEventListener('click',toggle);
+  demo.addEventListener('keydown',e=>{ if(e.key==='Enter'||e.key===' '){e.preventDefault();toggle();} });
+  paint(); rs.textContent='–'; rn.textContent='–';
+})();
+</script>
