@@ -93,9 +93,10 @@
 
 <section>
   <h2>Sequenced by hits, not by the clock</h2>
-  <p>Most step sequencers march to the transport. Stepper only moves when a MIDI note from another track tells it to —
-  point it at your snare and every hit knocks the melody one step forward. Ghost notes can be filtered out,
-  chance can thin the line, and the loop itself changes length as it plays.</p>
+  <p>Conventional step sequencers advance on the transport clock. Stepper advances on incoming MIDI:
+  each note matching the target pitch moves the sequence one step forward. A velocity threshold filters
+  low-velocity events, a probability gate determines whether each trigger registers, and the loop length
+  is itself sequenced — changing on every cycle.</p>
   <div class="chain">
     <div class="zone">
       <div class="zlabel">Input</div>
