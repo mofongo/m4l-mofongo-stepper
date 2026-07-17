@@ -76,6 +76,15 @@
     color:var(--dim);display:block;margin-bottom:3px}
   .specs .v{font-variant-numeric:tabular-nums}
 
+  .dl{display:flex;gap:12px;flex-wrap:wrap;margin-top:16px}
+  .btn{font-family:var(--mono);font-size:13px;letter-spacing:.08em;text-transform:uppercase;
+    text-decoration:none;padding:13px 20px;border-radius:4px;display:inline-block}
+  .btn.primary{background:var(--orange);color:#141210}
+  .btn.primary:hover{background:var(--cream)}
+  .btn.ghost{color:var(--ink);border:1px solid var(--line);background:var(--panel)}
+  .btn.ghost:hover{border-color:var(--dim)}
+  .dlnote{font-size:13.5px;color:var(--dim);margin-top:12px}
+
   .quiet{color:var(--dim)}
 </style>
 
@@ -155,6 +164,17 @@
     <div><span class="k">Melody</span><span class="v">16 steps · pitch 36–96, drawn as bars</span></div>
     <div><span class="k">Loop length</span><span class="v">16 slots · 1–16 steps, cycled by draggable bracket</span></div>
   </div>
+</section>
+
+<section>
+  <h2>Download</h2>
+  <p>Free and open — devices, patcher source, and this page live in the repository.</p>
+  <div class="dl">
+    <a class="btn primary" href="https://github.com/mofongo/m4l-mofongo-stepper/releases/download/v1.0/Mofongo.Stepper.amxd">↓ Stepper .amxd</a>
+    <a class="btn ghost" href="https://github.com/mofongo/m4l-mofongo-stepper/releases/download/v1.0/Mofongo.Sender.amxd">↓ Sender .amxd</a>
+    <a class="btn ghost" href="https://github.com/mofongo/m4l-mofongo-stepper">GitHub repo</a>
+  </div>
+  <p class="dlnote">Drop Stepper on a MIDI track before an instrument. Put Sender on the track you want to trigger from — every Stepper in the set hears it.</p>
 </section>
 
 </div>
